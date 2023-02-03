@@ -1,0 +1,39 @@
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+  workflow_dispatch:
+
+name: Build Executables
+
+jobs:
+  build_and_test:
+    strategy:
+      matrix:
+        target: [x86_64-pc-windows-msvc]
+    name: Build Executables
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: Install Powershell
+        run: |
+          curl -L https://github.com/PowerShell/PowerShell/releases/download/v7.3.2/powershell_7.3.2-1.deb_amd64.deb -o pwsh.deb
+          sudo dpkg -i pwsh.deb
+          sudo apt-get install -f
+      - name: Setup Rust Toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          target: ${{ matrix.target }}
+      - name: Build
+        run: pwsh -Command "Import-Module .\Makefile.psm1; Build-Executable ${{ matrix.target }}"
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: Kosmos-${{ matrix.target }}
+          path: |
+            target/${{ matrix.target }}/debug/kosmos.exe
+            target/${{ matrix.target }}/debug/kosmos.pdb
+      
